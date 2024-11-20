@@ -197,12 +197,28 @@ class LayeredOccupancyGrid:
         return list(self._layers.keys())
 
 
+def sigmoid(a):
+    test_val = 709.78
+
+    # for a_val in a:
+    #     if abs(a_val) > test_val:
+    #         print("Value will be clipped in sigmoid:", a_val)
+
+    a = np.clip(a, -test_val, test_val)
+
+    return 1 / (1 + np.exp(-a))
+
 # Example usage
 if __name__ == "__main__":
     # Create a grid
     grid = LayeredOccupancyGrid(width=10, height=10)
 
-    step_size = 0.15
+    detection_confidence = 0.68
+
+    step_size = 0.75
+    step_size = np.log(detection_confidence / (1-detection_confidence))
+    print("Step size:", step_size)
+    odds_bounds = 6*0.75
 
     # Create different layers
     grid.create_layer('elevation', data_type=float, default_value=0.0, cell_width_m=0.5)
@@ -211,29 +227,37 @@ if __name__ == "__main__":
                       update_method= lambda x, y : max(1e-7, min(x + step_size*(2*y - 1), 1.0 - 1e-7)),
                       retrieve_method= lambda x : int(np.log(x / (1 - x)) > 0.9)
                       )
+
+    # implements an obstacle layer that uses sigmoid odds
+    grid.create_layer('obstacle2', data_type=float, default_value=0,
+                      update_method= lambda x, y : max(-odds_bounds, min(x + step_size*(2*y - 1), odds_bounds)),
+                      retrieve_method= lambda x : int(sigmoid(x) > 0.9)
+                      )
     grid.create_layer('terrain_type', data_type=int, default_value=0)
 
     # Set some cell values
     grid.set_cell('elevation', 5, 5, 10.25)
 
-    grid.set_cell('obstacle', 5, 5, 1)
-    grid.set_cell('obstacle', 5, 5, 1)
-    grid.set_cell('obstacle', 5, 5, 1)
-    grid.set_cell('obstacle', 5, 5, 1)
+    grid.set_cell('obstacle2', 5, 5, 1)
+    grid.set_cell('obstacle2', 5, 5, 1)
+    # grid.set_cell('obstacle2', 5, 5, 1)
+    grid.set_cell('obstacle2', 5, 5, 1)
 
-    print(grid._layers['obstacle'])
+    print(grid._layers['obstacle2'])
     maxNum = 10
     for i in range(1, maxNum):
-        i = i / maxNum
-        print(i, ":", np.log(i / (1 - i)))
+        print(i, "sig:", sigmoid(i))
+
+        # i = i / maxNum
+        # print(i, ":", np.log(i / (1 - i)))
 
 
     grid.set_cell('terrain_type', 5, 5, 2)
 
     # Retrieve layer information
-    print(grid.get_layer_info('obstacle'))
+    print(grid.get_layer_info('obstacle2'))
 
     # Get cell values
     print(grid.get_cell('elevation', 5, 5))  # Should print 10.25
-    print(grid.get_cell('obstacle', 5, 5))  # Should print 10.25
+    print(grid.get_cell('obstacle2', 5, 5))  # Should print 10.25
     print(grid.get_cell('terrain_type', 5, 5))  # Should print 2
