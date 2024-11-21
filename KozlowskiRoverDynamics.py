@@ -1,8 +1,8 @@
 import numpy as np
-from dataclasses import dataclass
-from typing import Tuple, Optional
-
 from RoverDynamics import RoverDynamics
+from RickyRoverDynamics import RickyRoverDynamics
+from dataclasses import dataclass
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -29,110 +29,8 @@ class ControlParams:
     alpha1: float  # Convergence rate
 
 
-class SkidSteeringController:
-    def __init__(self, robot_params: RobotParams, control_params: ControlParams):
-        self.robot = robot_params
-        self.control = control_params
-
-        # Initialize oscillator state
-        self.zd = np.array([
-            self.control.alpha0 * np.cos(-np.pi / 3),
-            self.control.alpha0 * np.sin(-np.pi / 3)
-        ])
-
-        # Initialize time
-        self.last_time = None
-
-    def compute_rotation_matrix(self, theta: float) -> np.ndarray:
-        """Compute the 2D rotation matrix"""
-        return np.array([
-            [np.cos(theta), -np.sin(theta)],
-            [np.sin(theta), np.cos(theta)]
-        ])
-
-    def compute_error_transform(self, theta: float, theta_error: float) -> np.ndarray:
-        """Compute the error transformation matrix P"""
-        P = np.zeros((3, 3))
-        P[0, 0] = -theta_error * np.cos(theta) + 2 * np.sin(theta)
-        P[0, 1] = -theta_error * np.sin(theta) - 2 * np.cos(theta)
-        P[0, 2] = -2 * self.robot.x_icr
-        P[1, 2] = 1
-        P[2, 0] = np.cos(theta)
-        P[2, 1] = np.sin(theta)
-        return P
-
-    def update_oscillator(self, dt: float):
-        """Update the oscillator state"""
-        # Compute desired error bound
-        delta_d = self.control.alpha0 * np.exp(-self.control.alpha1 * dt) + self.control.epsilon1
-
-        # Update oscillator (simple harmonic motion)
-        omega = 2.0  # oscillator frequency
-        self.zd[0] = delta_d * np.cos(omega * dt)
-        self.zd[1] = delta_d * np.sin(omega * dt)
-
-    def compute_control(self,
-                        current_state: np.ndarray,
-                        desired_state: np.ndarray,
-                        current_time: float) -> Tuple[float, float]:
-        """
-        Compute control inputs for the skid-steering robot
-
-        Args:
-            current_state: [x, y, theta] current robot state
-            desired_state: [x_d, y_d, theta_d] desired robot state
-            current_time: current time in seconds
-
-        Returns:
-            left_wheel_velocity: Angular velocity for left wheels
-            right_wheel_velocity: Angular velocity for right wheels
-        """
-        # Initialize time if first call
-        if self.last_time is None:
-            self.last_time = current_time
-
-        # Compute time step
-        dt = current_time - self.last_time
-        self.last_time = current_time
-
-        # Compute errors
-        error = current_state - desired_state
-
-        # Update oscillator
-        self.update_oscillator(dt)
-
-        # Compute transformation matrices
-        theta = current_state[2]
-        P = self.compute_error_transform(theta, error[2])
-
-        # Transform errors to auxiliary system
-        Z = P @ error
-
-        # Compute control in auxiliary coordinates
-        u = np.zeros(2)
-        u[0] = -self.control.k1 * Z[2]  # Position control
-        u[1] = -self.control.k2 * Z[1]  # Orientation control
-
-        # Add oscillator term
-        u += self.zd
-
-        # Compute velocity transformation matrix
-        L = error[0] * np.sin(theta) - error[1] * np.cos(theta)
-        T = np.array([[L, 1], [1, 0]])
-
-        # Transform to robot velocities
-        eta = T @ u
-
-        # Convert to wheel velocities using equation (3) from the paper
-        left_wheel_velocity = (eta[0] - self.robot.c * eta[1]) / self.robot.r
-        right_wheel_velocity = (eta[0] + self.robot.c * eta[1]) / self.robot.r
-
-        return left_wheel_velocity, right_wheel_velocity
-
-
 class KozlowskiRoverDynamics(RoverDynamics):
     def __init__(self, robot_params: RobotParams, control_params: ControlParams):
-        super().__init__()
         self.robot = robot_params
         self.control = control_params
 
@@ -196,15 +94,17 @@ class KozlowskiRoverDynamics(RoverDynamics):
         """
 
         # Compute errors
-        error = np.ndarray([current_state[0] - desired_state[0],
-                            current_state[1] - desired_state[1],
-                            current_state[2] - desired_state[2]])
+        # this error just ignores theta error because there is no target theta only target points
+        # it also ignores z because the model doesn't work with that
+        error = np.array([state[0] - target_point[0],
+                          state[1] - target_point[1],
+                          state[3]])
 
         # Update oscillator
         self.update_oscillator(dt)
 
         # Compute transformation matrices
-        theta = current_state[2]
+        theta = state[2]
         P = self.compute_error_transform(theta, error[2])
 
         # Transform errors to auxiliary system
@@ -229,8 +129,8 @@ class KozlowskiRoverDynamics(RoverDynamics):
         left_wheel_velocity = (eta[0] - self.robot.c * eta[1]) / self.robot.r
         right_wheel_velocity = (eta[0] + self.robot.c * eta[1]) / self.robot.r
 
-        return np.ndarray(
-            [left_wheel_velocity, left_wheel_velocity, right_wheel_velocity, right_wheel_velocity])
+        return np.array(
+            [left_wheel_velocity, right_wheel_velocity, left_wheel_velocity, right_wheel_velocity])
 
 
 # Example usage
@@ -256,24 +156,24 @@ def create_example_controller():
         alpha1=0.4
     )
 
-    return SkidSteeringController(robot_params, control_params)
+    return KozlowskiRoverDynamics(robot_params, control_params)
 
 
 # Demo code
 if __name__ == "__main__":
-    # Create controller
-    controller = create_example_controller()
+    roverController = create_example_controller()
+    rover = RickyRoverDynamics(mass=40.0, wheel_base=0.5, track_width=0.5, max_motor_force=50.0)
 
-    # Example states
-    current_state = np.array([0.0, 0.5, -np.pi / 4])  # x, y, theta
-    desired_state = np.array([0.0, 0.0, 0.0])  # target pose at origin
 
-    # Compute control
-    left_vel, right_vel = controller.compute_control(
-        current_state,
-        desired_state,
-        current_time=0.0
-    )
+    rover.set_state(x=0.0, y=0.0, z=0.0, theta=0.0, v_x=0.0, v_y=0.0, v_z=0.0, omega=0.0)
 
-    print(f"Left wheel velocity: {left_vel:.2f} rad/s")
-    print(f"Right wheel velocity: {right_vel:.2f} rad/s")
+    target = (5.0, 5.0, 0)
+
+    # not fully implemented
+    gradient = np.radians(10)
+
+    dt = 0.1
+    for t in range(20):
+        motor_forces = roverController.apply_mpc(rover.get_state(), target, dt, slope=gradient)
+        rover.update(motor_forces, dt, grade=gradient)
+        print(f"Time: {t * dt:.1f}s, State: {rover.get_state()}, Motor Forces: {motor_forces}")

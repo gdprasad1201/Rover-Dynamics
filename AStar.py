@@ -1,6 +1,3 @@
-from operator import contains
-from webbrowser import open_new
-
 from typing import Union, Dict, Optional, List, Callable
 
 import math
