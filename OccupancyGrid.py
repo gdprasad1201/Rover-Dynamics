@@ -3,7 +3,7 @@ from typing import Union, Dict, Optional, List, Callable
 
 
 class LayeredOccupancyGrid:
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, cell_size_m: float):
         """
         Initialize a layered 2D occupancy grid.
 
@@ -14,16 +14,30 @@ class LayeredOccupancyGrid:
         self._width = width
         self._height = height
         self._layers: Dict[str, np.ndarray] = {}
-        self._cell_widths: Dict[str, float] = {}
-        self._layer_update_methods: Dict[str, Callable[[Union[int, float], Union[int, float]], Union[int, float]]] = {}
-        self._layer_retrieve_methods: Dict[str, Callable[[Union[int, float]], Union[int, float]]] = {}
+        self._cell_size_m:float = cell_size_m
+        self._layer_update_methods: Dict[str, Callable[[any, any], any]] = {}
+        self._layer_retrieve_methods: Dict[str, Callable[[any], any]] = {}
+
+    def getWidth(self) -> int:
+        return self._width
+
+    def getHeight(self) -> int:
+        return self._height
+
+    def getCellSize(self) -> float:
+        return self._cell_size_m
+
+    def getLayer(self, layer: Union[int, str]) -> np.ndarray:
+        return self._layers[self._get_layer_name(layer)]
+
+    def contains_layer(self, layer: str) -> bool:
+        return layer in self._layers
 
     def create_layer(
             self,
             name: str,
             data_type: type = int,
-            default_value: Union[int, float] = 0,
-            cell_width_m: float = 1.0,
+            default_value: any = None,
             update_method: Optional[Callable[[Union[int, float], Union[int, float]], Union[int, float]]] = lambda x, y : y,
             retrieve_method: Optional[Callable[[Union[int, float]], Union[int, float]]] = lambda x : x
     ):
@@ -45,16 +59,20 @@ class LayeredOccupancyGrid:
 
         layer = np.full((self._height, self._width), default_value, dtype=data_type)
         self._layers[name] = layer
-        self._cell_widths[name] = cell_width_m
         self._layer_update_methods[name] = update_method
         self._layer_retrieve_methods[name] = retrieve_method
+
+    def delete_layer(self, name: Union[int, str]):
+        layer_name = self._get_layer_name(name)
+        if layer_name in self._layers:
+            self._layers.pop(layer_name)
 
     def set_cell(
             self,
             layer: Union[str, int],
             x: int,
             y: int,
-            value: Union[int, float]
+            value: any
     ):
         """
         Set the value of a specific cell in a layer.
@@ -77,7 +95,7 @@ class LayeredOccupancyGrid:
             layer: Union[str, int],
             x: int,
             y: int
-    ) -> Union[int, float]:
+    ) -> any:
         """
         Get the value of a specific cell in a layer.
 
@@ -96,6 +114,16 @@ class LayeredOccupancyGrid:
 
         return self._layer_retrieve_methods[layer_name](self._layers[layer_name][y, x])
 
+    def get_indices(self, x_m: float, y_m: float) -> tuple[int, int]:
+        # perform ceiling division using double negation
+        x_index = int(-(-x_m / self._cell_size_m))
+        y_index = int(-(-y_m / self._cell_size_m))
+
+        if x_index < 0 or x_index >= self._width or y_index < 0 or y_index >= self._height:
+            raise IndexError("Cell position out of grid bounds")
+
+        return x_index, y_index
+
     def set_cell_location(self, layer: Union[str, int],
                           x_m: int, y_m: int,
                           value: Union[int, float]
@@ -112,11 +140,7 @@ class LayeredOccupancyGrid:
         layer_name = self._get_layer_name(layer)
 
         # perform ceiling division using double negation
-        x_index = -(-x_m // self._cell_widths[layer])
-        y_index = -(-y_m // self._cell_widths[layer])
-
-        if x_index < 0 or x_index >= self._width or y_index < 0 or y_index >= self._height:
-            raise IndexError("Cell position out of grid bounds")
+        x_index, y_index = self.get_indices(x_m, y_m)
 
         self._layers[layer_name][y_index, x_index] = self._layer_update_methods[layer](self._layers[layer_name][y_index, x_index], value)
 
@@ -125,7 +149,7 @@ class LayeredOccupancyGrid:
             layer: Union[str, int],
             x_m: int,
             y_m: int
-    ) -> Union[int, float]:
+    ) -> any:
         """
         Get the value of a specific cell in a layer.
 
@@ -140,11 +164,7 @@ class LayeredOccupancyGrid:
         layer_name = self._get_layer_name(layer)
 
         # perform ceiling division using double negation
-        x_index = -(-x_m // self._cell_widths[layer])
-        y_index = -(-y_m // self._cell_widths[layer])
-
-        if x_index < 0 or x_index >= self._width or y_index < 0 or y_index >= self._height:
-            raise IndexError("Cell position out of grid bounds")
+        x_index, y_index = self.get_indices(x_m, y_m)
 
         return self._layer_retrieve_methods[layer_name](self._layers[layer_name][y_index, x_index])
 
