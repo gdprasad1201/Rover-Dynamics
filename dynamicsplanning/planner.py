@@ -42,7 +42,7 @@ def run_testing_harness():
     
     # Instantiate SkidSteeringRobot
     skid_steering_robot = SkidSteeringRobot(
-        m=1.0, I=0.0036, r=0.0265, c=0.034, x0=-0.02
+        m=40.0, I=0.0036, r=0.0265, c=0.034, x0=-0.02
     )
     
     # Plot setup
@@ -57,11 +57,11 @@ def run_testing_harness():
         ax.add_patch(circle)
 
     # Run RRT* Torque
-    start_time_torque = time.time()
-    rrt_star_torque = RRTStarTorque(start, goal, obstacles, skid_steering_robot, area, max_iter=1500)
-    rrt_star_torque.plan()
-    runtime_torque = time.time() - start_time_torque
-    rrt_star_torque.visualize(ax, color='blue', label="RRT* Torque")
+    # start_time_torque = time.time()
+    # rrt_star_torque = RRTStarTorque(start, goal, obstacles, skid_steering_robot, area, max_iter=1500)
+    # rrt_star_torque.plan()
+    # runtime_torque = time.time() - start_time_torque
+    # rrt_star_torque.visualize(ax, color='blue', label="RRT* Torque")
 
     # Run RRT* Manhattan
     start_time_manhattan = time.time()
@@ -73,7 +73,7 @@ def run_testing_harness():
     # Run RRT* Combined
     start_time_combined = time.time()
     rrt_star_combined = RRTStarCombined(
-        start, goal, obstacles, skid_steering_robot, area, alpha=1.0, beta=.2, max_iter=1500
+        start, goal, obstacles, skid_steering_robot, area, alpha=1.0, beta=5.0, max_iter=1500
     )
     rrt_star_combined.plan()
     runtime_combined = time.time() - start_time_combined
@@ -84,30 +84,31 @@ def run_testing_harness():
     plt.show()
 
     # Metrics
-    path_length_torque = calculate_path_length(rrt_star_torque.edges)
+    # path_length_torque = calculate_path_length(rrt_star_torque.edges)
     path_length_manhattan = calculate_path_length(rrt_star_manhattan.edges)
     path_length_combined = calculate_path_length(rrt_star_combined.edges)
 
-    energy_torque = calculate_total_torque_cost(rrt_star_torque.edges, skid_steering_robot, gains)
+    # energy_torque = calculate_total_torque_cost(rrt_star_torque.edges, skid_steering_robot, gains)
     energy_manhattan = calculate_total_torque_cost(rrt_star_manhattan.edges, skid_steering_robot, gains)
     energy_combined = calculate_total_torque_cost(rrt_star_combined.edges, skid_steering_robot, gains)
 
     # Display results
     print(f"Path Lengths:")
-    print(f"RRT* Torque: {path_length_torque:.4f} units")
+    # print(f"RRT* Torque: {path_length_torque:.4f} units")
     print(f"RRT* Manhattan: {path_length_manhattan:.4f} units")
     print(f"RRT* Combined: {path_length_combined:.4f} units")
 
     print("\nEnergy Costs:")
-    print(f"RRT* Torque: {energy_torque:.4f} units")
+    # print(f"RRT* Torque: {energy_torque:.4f} units")
     print(f"RRT* Manhattan: {energy_manhattan:.4f} units")
     print(f"RRT* Combined: {energy_combined:.4f} units")
 
     print("\nRuntimes:")
-    print(f"RRT* Torque Runtime: {runtime_torque:.4f} seconds")
+    # print(f"RRT* Torque Runtime: {runtime_torque:.4f} seconds")
     print(f"RRT* Manhattan Runtime: {runtime_manhattan:.4f} seconds")
     print(f"RRT* Combined Runtime: {runtime_combined:.4f} seconds")
 
 
-# Run the testing harness
-run_testing_harness()
+if __name__ == "__main__":
+    # Run the testing harness
+    run_testing_harness()

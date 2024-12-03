@@ -52,7 +52,7 @@ class RRTStarManhattan:
     
     def nearest_node(self, q):
         return min(self.nodes, key=lambda n: np.sum(np.abs(n[0][:2] - q[:2])))
-    
+
     def steer(self, q_nearest, q_rand):
         direction = q_rand[:2] - q_nearest[:2]
         direction /= np.linalg.norm(direction)
@@ -70,6 +70,8 @@ class RRTStarManhattan:
                 continue
             
             manhattan_cost = np.sum(np.abs(q_nearest[0][:2] - q_new[:2]))
+            euclidian_dist = np.sqrt(np.sum(np.pow(q_nearest[0][:2] - q_new[:2], 2)))
+
             new_cost = q_nearest[1] + manhattan_cost
             self.nodes.append((q_new, new_cost))
             self.edges.append((q_nearest[0], q_new))

@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import random
 import time
@@ -56,6 +58,14 @@ class RRTStarCombined:
     def nearest_node(self, q):
         return min(self.nodes, key=lambda n: np.sum(np.abs(n[0][:2] - q[:2])))
 
+
+    def steer_usual(self, q_nearest, q_rand):
+        direction = q_rand[:2] - q_nearest[:2]
+        direction /= np.linalg.norm(direction)
+        q_new = q_nearest[:2] + direction * self.step_size
+        theta_new = np.arctan2(direction[1], direction[0])
+        return np.array([q_new[0], q_new[1], theta_new])
+
     def steer(self, q_nearest, q_rand):
         """
         Use robot dynamics to simulate motion from q_nearest toward q_rand.
@@ -85,10 +95,11 @@ class RRTStarCombined:
         Calculate the combined cost using Manhattan distance and torque cost.
         """
         manhattan_cost = np.sum(np.abs(q1[:2] - q2[:2]))
+        euclidian_dist = math.sqrt(np.sum(np.pow(q1[:2] - q2[:2], 2)))
         eta = np.zeros(2)  # Assume initial zero velocity
         tau = self.robot.control_law(q1, q2, eta, eta, np.zeros_like(eta), gains)
         torque_cost = np.sum(np.abs(tau))
-        return self.alpha * manhattan_cost + self.beta * torque_cost
+        return self.alpha * euclidian_dist + self.beta * torque_cost
 
     def plan(self):
         """
@@ -97,7 +108,7 @@ class RRTStarCombined:
         for _ in range(self.max_iter):
             q_rand = self.sample_point()
             q_nearest = self.nearest_node(q_rand)
-            q_new = self.steer(q_nearest[0], q_rand)
+            q_new = self.steer_usual(q_nearest[0], q_rand)
 
             if q_new is None or self.is_collision(q_new):
                 continue
