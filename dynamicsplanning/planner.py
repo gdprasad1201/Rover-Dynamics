@@ -28,17 +28,23 @@ def calculate_total_torque_cost(edges, robot, gains):
         tau = robot.control_law(np.array(parent), np.array(child), eta, eta, np.zeros_like(eta), gains)
         total_cost += np.sum(np.abs(tau))
     return total_cost
+
+
 # Testing Harness for All Three Planners
-def run_testing_harness():
+def run_testing_harness(_obstacles = None):
     # Parameters
     start = [0.0, 0.0, 0.0]
     goal = [2.0, 2.0, 0.0]
     area = [-0.5, 2.5, -0.5, 2.5]
-    obstacles = [
-        (1.0, 1.0, 0.2),
-        (1.5, 1.5, 0.2),
-        (2.0, 0.5, 0.2)
-    ]
+    obstacles = _obstacles
+
+    if _obstacles is None:
+        obstacles = [
+            (1.0, 1.0, 0.2),
+            (1.5, 1.5, 0.2),
+            (2.0, 0.5, 0.2)
+        ]
+
     
     # Instantiate SkidSteeringRobot
     skid_steering_robot = SkidSteeringRobot(
@@ -110,5 +116,26 @@ def run_testing_harness():
 
 
 if __name__ == "__main__":
+
+    obstacles0 = [
+        (1.0, 1.0, 0.2),
+        (1.5, 1.5, 0.2),
+        (2.0, 0.5, 0.2)
+    ]
     # Run the testing harness
-    run_testing_harness()
+    run_testing_harness(obstacles0)
+
+    obstacles1 = [[1.07, 1.93, 0.09], [0.35, 1.25, 0.24], [0.29, 0.5, 0.24], [0.25, 1.71, 0.26], [1.63, 1.64, 0.06]]
+    obstacles2 = [[1.7,1.78,0.24],[0.97,1.78,0.17],[0.39,2.27,0.15],[0.07,2.07,0.11],[1.49,1.25,0.23]]
+    obstacles3 = [[1.86,1.00,0.27],[2.19,2.3,0.09],[0.43,0.05,0.23],[1.38,2.37,0.18]]
+    obstacles4 = [[0.14,1.17,0.14],[2.20,0.95,0.16]]
+    obstacles5 = [[0.47,2.35,0.2],[0.72,1.18,0.08],[1.44,0.5,0.19]]
+    obstacles6 = [[0.65,0.15,0.1],[0.23,2.25,0.13],[1.08,0.84,0.17],[0.84,2.18,0.12],[1.94,1.53,0.27]]
+
+    run_testing_harness(obstacles1)
+    run_testing_harness(obstacles2)
+    run_testing_harness(obstacles3)
+    run_testing_harness(obstacles4)
+    run_testing_harness(obstacles5)
+    run_testing_harness(obstacles6)
+
