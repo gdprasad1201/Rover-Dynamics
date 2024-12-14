@@ -36,9 +36,12 @@ def aggregate_stats(stat_result):
     aggregated_stats = []
 
     for stat_set in stat_result:
-        # torque_stats = np.mean([run[0] for run in stat_set], axis=0)
+        torque_stats = np.mean([run[0] for run in stat_set], axis=0)
         manhattan_stats = np.mean([run[1] for run in stat_set], axis=0)
         combined_stats = np.mean([run[2] for run in stat_set], axis=0)
+
+        # manhattan_stats = np.mean([run[0] for run in stat_set], axis=0)
+        # combined_stats = np.mean([run[1] for run in stat_set], axis=0)
 
         aggregated_stats.append((
             # torque_stats,
@@ -80,11 +83,11 @@ def run_testing_harness(_obstacles = None, _verbose = False):
             ax.add_patch(circle)
 
     # Run RRT* Torque
-    # start_time_torque = time.time()
-    # rrt_star_torque = RRTStarTorque(start, goal, obstacles, skid_steering_robot, area, max_iter=1500)
-    # rrt_star_torque.plan()
-    # runtime_torque = time.time() - start_time_torque
-    # rrt_star_torque.visualize(ax, color='blue', label="RRT* Torque")
+    start_time_torque = time.time()
+    rrt_star_torque = RRTStarTorque(start, goal, obstacles, skid_steering_robot, area, max_iter=1500)
+    rrt_star_torque.plan()
+    runtime_torque = time.time() - start_time_torque
+    if _verbose: rrt_star_torque.visualize(ax, color='blue', label="RRT* Torque")
 
     # Run RRT* Manhattan
     start_time_manhattan = time.time()
@@ -112,35 +115,35 @@ def run_testing_harness(_obstacles = None, _verbose = False):
         plt.show()
 
     # Metrics
-    # path_length_torque = calculate_path_length(rrt_star_torque.edges)
+    path_length_torque = calculate_path_length(rrt_star_torque.edges)
     path_length_manhattan = calculate_path_length(rrt_star_manhattan.edges)
     path_length_combined = calculate_path_length(rrt_star_combined.edges)
 
-    # energy_torque = calculate_total_torque_cost(rrt_star_torque.edges, skid_steering_robot, gains)
+    energy_torque = calculate_total_torque_cost(rrt_star_torque.edges, skid_steering_robot, gains)
     energy_manhattan = calculate_total_torque_cost(rrt_star_manhattan.edges, skid_steering_robot, gains)
     energy_combined = calculate_total_torque_cost(rrt_star_combined.edges, skid_steering_robot, gains)
 
     # Display results
     print(f"Path Lengths:")
-    # print(f"RRT* Torque: {path_length_torque:.4f} units")
+    print(f"RRT* Torque: {path_length_torque:.4f} units")
     print(f"RRT* Manhattan: {path_length_manhattan:.4f} units")
     print(f"RRT* Combined: {path_length_combined:.4f} units")
 
     print("\nEnergy Costs:")
-    # print(f"RRT* Torque: {energy_torque:.4f} units")
+    print(f"RRT* Torque: {energy_torque:.4f} units")
     print(f"RRT* Manhattan: {energy_manhattan:.4f} units")
     print(f"RRT* Combined: {energy_combined:.4f} units")
 
     print("\nRuntimes:")
-    # print(f"RRT* Torque Runtime: {runtime_torque:.4f} seconds")
+    print(f"RRT* Torque Runtime: {runtime_torque:.4f} seconds")
     print(f"RRT* Manhattan Runtime: {runtime_manhattan:.4f} seconds")
     print(f"RRT* Combined Runtime: {runtime_combined:.4f} seconds")
 
-    # RRTStarTorqueStats = [path_length_torque, energy_torque, runtime_torque]
+    RRTStarTorqueStats = [path_length_torque, energy_torque, runtime_torque]
     RRTStarManhattanStats = [path_length_manhattan, energy_manhattan, runtime_combined]
     RRTStarCombinedStats = [path_length_combined, energy_combined, runtime_combined]
 
-    return [RRTStarManhattanStats, RRTStarCombinedStats]
+    return [RRTStarTorqueStats, RRTStarManhattanStats, RRTStarCombinedStats]
 
 
 
@@ -190,9 +193,15 @@ if __name__ == "__main__":
         aggregated_stats = aggregate_stats(stat_result)
 
         # Extract metrics for plotting
-        path_lengths = [[stats[0][0], stats[1][0], stats[2][0]] for stats in aggregated_stats]
-        energy_costs = [[stats[0][1], stats[1][1], stats[2][1]] for stats in aggregated_stats]
-        runtimes = [[stats[0][2], stats[1][2], stats[2][2]] for stats in aggregated_stats]
+        path_lengths = [[stats[0][0], stats[1][0]
+                            , stats[2][0]
+                         ] for stats in aggregated_stats]
+        energy_costs = [[stats[0][1], stats[1][1]
+                            , stats[2][1]
+                         ] for stats in aggregated_stats]
+        runtimes = [[stats[0][2], stats[1][2]
+                        , stats[2][2]
+                     ] for stats in aggregated_stats]
 
         labels = [f"Obstacle Set {i + 1}" for i in range(len(aggregated_stats))]
 
@@ -201,9 +210,12 @@ if __name__ == "__main__":
         x = np.arange(len(labels))
         width = 0.25
 
-        # plt.bar(x - width, [p[0] for p in path_lengths], width, label="RRT* Torque", color='blue')
+        plt.bar(x - width, [p[0] for p in path_lengths], width, label="RRT* Torque", color='blue')
         plt.bar(x, [p[1] for p in path_lengths], width, label="RRT* Manhattan", color='yellow')
         plt.bar(x + width, [p[2] for p in path_lengths], width, label="RRT* Combined", color='red')
+
+        # plt.bar(x, [p[0] for p in path_lengths], width, label="RRT* Manhattan", color='yellow')
+        # plt.bar(x + width, [p[1] for p in path_lengths], width, label="RRT* Combined", color='red')
 
         plt.xticks(x, labels)
         plt.ylabel("Path Length (units)")
@@ -215,9 +227,12 @@ if __name__ == "__main__":
         # Plot Energy Costs
         plt.figure(figsize=(12, 6))
 
-        # plt.bar(x - width, [e[0] for e in energy_costs], width, label="RRT* Torque", color='blue')
+        plt.bar(x - width, [e[0] for e in energy_costs], width, label="RRT* Torque", color='blue')
         plt.bar(x, [e[1] for e in energy_costs], width, label="RRT* Manhattan", color='yellow')
         plt.bar(x + width, [e[2] for e in energy_costs], width, label="RRT* Combined", color='red')
+
+        # plt.bar(x, [e[0] for e in energy_costs], width, label="RRT* Manhattan", color='yellow')
+        # plt.bar(x + width, [e[1] for e in energy_costs], width, label="RRT* Combined", color='red')
 
         plt.xticks(x, labels)
         plt.ylabel("Energy Cost (units)")
@@ -229,9 +244,12 @@ if __name__ == "__main__":
         # Plot Runtimes
         plt.figure(figsize=(12, 6))
 
-        # plt.bar(x - width, [r[0] for r in runtimes], width, label="RRT* Torque", color='blue')
+        plt.bar(x - width, [r[0] for r in runtimes], width, label="RRT* Torque", color='blue')
         plt.bar(x, [r[1] for r in runtimes], width, label="RRT* Manhattan", color='yellow')
         plt.bar(x + width, [r[2] for r in runtimes], width, label="RRT* Combined", color='red')
+
+        # plt.bar(x, [r[0] for r in runtimes], width, label="RRT* Manhattan", color='yellow')
+        # plt.bar(x + width, [r[1] for r in runtimes], width, label="RRT* Combined", color='red')
 
         plt.xticks(x, labels)
         plt.ylabel("Runtime (seconds)")
